@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/db/app_database.dart';
+import '../capture/capture_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -46,9 +47,10 @@ class HomeScreen extends StatelessWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          // Fase 1: prueba de escritura/lectura en la DB (ver nota en BillsDao).
-          await db.billsDao.debugInsertFinalizedBill();
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CaptureScreen()),
+          );
         },
         child: const Icon(Icons.add),
       ),

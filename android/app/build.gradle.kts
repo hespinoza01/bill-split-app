@@ -42,3 +42,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Requerido por image_cropper (UCropActivity usa Theme.AppCompat.Light.NoActionBar).
+    implementation("androidx.appcompat:appcompat:1.7.0")
+}

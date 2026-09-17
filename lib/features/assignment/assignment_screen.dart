@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/db/app_database.dart';
+import '../summary/summary_screen.dart';
 import 'assignment_view_model.dart';
 import 'reviewed_bill_data.dart';
 
@@ -117,10 +118,12 @@ class _AssignmentBody extends StatelessWidget {
           child: FilledButton(
             onPressed: vm.allItemsAssigned
                 ? () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'El cálculo del reparto y el resumen final todavía no están disponibles. Estarán listos pronto.',
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SummaryScreen(
+                          bill: vm.bill,
+                          people: vm.people,
+                          assignmentsByItemIndex: vm.assignmentsSnapshot,
                         ),
                       ),
                     );

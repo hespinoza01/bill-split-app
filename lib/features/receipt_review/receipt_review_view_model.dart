@@ -20,6 +20,25 @@ class EditableLineItem {
   }
 }
 
+/// Config de un cargo (impuesto o propina) — se puede ingresar como monto
+/// fijo o como porcentaje del subtotal, y se puede desactivar del todo
+/// (factura sin ese cargo). Guarda ambos valores (monto y porcentaje) para
+/// no perder lo que el usuario ya escribió al cambiar de modo.
+class ChargeConfig {
+  bool enabled;
+  bool isPercent;
+  double amount;
+  double percent;
+
+  ChargeConfig({required this.enabled, required this.isPercent, required this.amount, required this.percent});
+
+  /// El monto efectivo en dólares, según el modo y si está habilitado.
+  double effectiveAmount(double subtotal) {
+    if (!enabled) return 0;
+    return isPercent ? subtotal * percent / 100 : amount;
+  }
+}
+
 /// Holds the editable state for the Receipt Review screen. The user can
 /// correct anything the parser (local or Gemini) got wrong before saving —
 /// this correction step is the main mitigation for OCR/LLM parsing errors.
@@ -27,17 +46,20 @@ class ReceiptReviewViewModel extends ChangeNotifier {
   String? restaurantName;
   final List<EditableLineItem> items;
   double subtotal;
-  double tax;
-  double tip;
+  ChargeConfig taxConfig;
+  ChargeConfig tipConfig;
   double total;
 
   ReceiptReviewViewModel.fromParsed(ParsedReceipt parsed)
       : restaurantName = parsed.restaurantName,
         items = parsed.items.map(EditableLineItem.fromParsed).toList(),
         subtotal = parsed.subtotal,
-        tax = parsed.tax,
-        tip = parsed.tip,
+        taxConfig = ChargeConfig(enabled: true, isPercent: false, amount: parsed.tax, percent: 0),
+        tipConfig = ChargeConfig(enabled: true, isPercent: false, amount: parsed.tip, percent: 0),
         total = parsed.total;
+
+  double get tax => taxConfig.effectiveAmount(subtotal);
+  double get tip => tipConfig.effectiveAmount(subtotal);
 
   double get itemsSum => items.fold(0, (sum, i) => sum + i.lineTotal);
 
@@ -67,11 +89,53 @@ class ReceiptReviewViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateTotals({double? subtotal, double? tax, double? tip, double? total}) {
-    if (subtotal != null) this.subtotal = _nonNegative(subtotal);
-    if (tax != null) this.tax = _nonNegative(tax);
-    if (tip != null) this.tip = _nonNegative(tip);
-    if (total != null) this.total = _nonNegative(total);
+  void updateSubtotal(double value) {
+    subtotal = _nonNegative(value);
+    notifyListeners();
+  }
+
+  void updateTotal(double value) {
+    total = _nonNegative(value);
+    notifyListeners();
+  }
+
+  void setTaxEnabled(bool enabled) {
+    taxConfig.enabled = enabled;
+    notifyListeners();
+  }
+
+  void setTaxIsPercent(bool isPercent) {
+    taxConfig.isPercent = isPercent;
+    notifyListeners();
+  }
+
+  void setTaxAmount(double value) {
+    taxConfig.amount = _nonNegative(value);
+    notifyListeners();
+  }
+
+  void setTaxPercent(double value) {
+    taxConfig.percent = _nonNegative(value);
+    notifyListeners();
+  }
+
+  void setTipEnabled(bool enabled) {
+    tipConfig.enabled = enabled;
+    notifyListeners();
+  }
+
+  void setTipIsPercent(bool isPercent) {
+    tipConfig.isPercent = isPercent;
+    notifyListeners();
+  }
+
+  void setTipAmount(double value) {
+    tipConfig.amount = _nonNegative(value);
+    notifyListeners();
+  }
+
+  void setTipPercent(double value) {
+    tipConfig.percent = _nonNegative(value);
     notifyListeners();
   }
 

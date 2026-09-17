@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/models/parsed_receipt.dart';
@@ -145,11 +146,119 @@ class _TotalsFields extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _TotalField(label: 'Subtotal', value: vm.subtotal, onChanged: (v) => vm.updateTotals(subtotal: v)),
-        _TotalField(label: 'Impuesto', value: vm.tax, onChanged: (v) => vm.updateTotals(tax: v)),
-        _TotalField(label: 'Propina', value: vm.tip, onChanged: (v) => vm.updateTotals(tip: v)),
-        _TotalField(label: 'Total', value: vm.total, onChanged: (v) => vm.updateTotals(total: v)),
+        _TotalField(label: 'Subtotal', value: vm.subtotal, onChanged: vm.updateSubtotal),
+        const SizedBox(height: 8),
+        _ChargeField(
+          label: 'Impuesto',
+          noneLabel: 'Sin impuesto en esta factura',
+          config: vm.taxConfig,
+          subtotal: vm.subtotal,
+          onEnabledChanged: vm.setTaxEnabled,
+          onModeChanged: vm.setTaxIsPercent,
+          onAmountChanged: vm.setTaxAmount,
+          onPercentChanged: vm.setTaxPercent,
+        ),
+        const SizedBox(height: 8),
+        _ChargeField(
+          label: 'Propina',
+          noneLabel: 'Sin propina en esta factura',
+          config: vm.tipConfig,
+          subtotal: vm.subtotal,
+          onEnabledChanged: vm.setTipEnabled,
+          onModeChanged: vm.setTipIsPercent,
+          onAmountChanged: vm.setTipAmount,
+          onPercentChanged: vm.setTipPercent,
+        ),
+        const SizedBox(height: 8),
+        _TotalField(label: 'Total', value: vm.total, onChanged: vm.updateTotal),
       ],
+    );
+  }
+}
+
+/// Campo de impuesto o propina: se puede desactivar del todo (factura sin
+/// ese cargo), o ingresar como monto fijo en dólares o como porcentaje del
+/// subtotal — mostrando siempre el monto en dólares equivalente.
+class _ChargeField extends StatelessWidget {
+  final String label;
+  final String noneLabel;
+  final ChargeConfig config;
+  final double subtotal;
+  final ValueChanged<bool> onEnabledChanged;
+  final ValueChanged<bool> onModeChanged;
+  final ValueChanged<double> onAmountChanged;
+  final ValueChanged<double> onPercentChanged;
+
+  const _ChargeField({
+    required this.label,
+    required this.noneLabel,
+    required this.config,
+    required this.subtotal,
+    required this.onEnabledChanged,
+    required this.onModeChanged,
+    required this.onAmountChanged,
+    required this.onPercentChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CheckboxListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              controlAffinity: ListTileControlAffinity.leading,
+              dense: true,
+              value: !config.enabled,
+              title: Text(noneLabel, style: const TextStyle(fontSize: 13)),
+              onChanged: (checked) => onEnabledChanged(!(checked ?? false)),
+            ),
+            if (config.enabled)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+                child: Row(
+                  children: [
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(value: false, label: Text('\$')),
+                        ButtonSegment(value: true, label: Text('%')),
+                      ],
+                      selected: {config.isPercent},
+                      onSelectionChanged: (selection) => onModeChanged(selection.first),
+                      showSelectedIcon: false,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: config.isPercent
+                          ? TextFormField(
+                              key: ValueKey('$label-percent-${config.percent}'),
+                              initialValue: config.percent.toStringAsFixed(1),
+                              decoration: InputDecoration(
+                                labelText: '$label (%)',
+                                isDense: true,
+                                helperText: '= ${NumberFormat.simpleCurrency().format(config.effectiveAmount(subtotal))}',
+                              ),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              onChanged: (v) => onPercentChanged(double.tryParse(v) ?? config.percent),
+                            )
+                          : TextFormField(
+                              key: ValueKey('$label-amount-${config.amount}'),
+                              initialValue: config.amount.toStringAsFixed(2),
+                              decoration: InputDecoration(labelText: label, isDense: true),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              onChanged: (v) => onAmountChanged(double.tryParse(v) ?? config.amount),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

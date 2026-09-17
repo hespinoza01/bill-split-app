@@ -99,8 +99,17 @@ class _CaptureScreenState extends State<CaptureScreen> {
       _goToReview(parsed);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo parsear con IA, entra los ítems a mano: $e')),
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('No se pudo leer la factura automáticamente'),
+          content: const Text(
+            'Vamos a abrir la lista de ítems vacía para que la completes a mano.',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Entendido')),
+          ],
+        ),
       );
       _goToReview(ParsedReceipt.empty());
     }

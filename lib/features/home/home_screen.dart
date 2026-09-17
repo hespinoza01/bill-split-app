@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/db/app_database.dart';
 import '../capture/capture_screen.dart';
+import '../people_groups/people_groups_screen.dart';
 import '../settings/settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -18,6 +19,15 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Facturas'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.people_outline),
+            tooltip: 'Personas y grupos',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PeopleGroupsScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {

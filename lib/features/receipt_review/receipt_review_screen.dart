@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/models/parsed_receipt.dart';
+import '../assignment/people_selection_screen.dart';
+import '../assignment/reviewed_bill_data.dart';
 import 'receipt_review_view_model.dart';
 
 /// Fase 3: revisión/edición del resultado del parseo (local o Gemini) antes
@@ -67,8 +69,18 @@ class _ReviewBody extends StatelessWidget {
           const SizedBox(height: 24),
           FilledButton(
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Selección de personas — Fase 4, próximamente.')),
+              final reviewed = ReviewedBillData(
+                restaurantName: vm.restaurantName,
+                items: vm.items
+                    .map((i) => BillLineItemSummary(name: i.name, lineTotal: i.lineTotal))
+                    .toList(),
+                subtotal: vm.subtotal,
+                tax: vm.tax,
+                tip: vm.tip,
+                total: vm.total,
+              );
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => PeopleSelectionScreen(bill: reviewed)),
               );
             },
             child: const Text('Continuar'),

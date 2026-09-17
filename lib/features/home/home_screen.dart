@@ -6,6 +6,7 @@ import '../../data/db/app_database.dart';
 import '../capture/capture_screen.dart';
 import '../people_groups/people_groups_screen.dart';
 import '../settings/settings_screen.dart';
+import '../summary/bill_detail_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -64,6 +65,11 @@ class HomeScreen extends StatelessWidget {
                 title: Text(bill.restaurantName ?? 'Factura sin nombre'),
                 subtitle: Text(DateFormat.yMMMd().format(bill.date)),
                 trailing: Text(currency.format(bill.total)),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => BillDetailScreen(billId: bill.id)),
+                  );
+                },
               );
             },
           );

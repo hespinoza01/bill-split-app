@@ -61,17 +61,22 @@ class ReceiptReviewViewModel extends ChangeNotifier {
   void updateItem(int index, {String? name, double? quantity, double? unitPrice, double? lineTotal}) {
     final item = items[index];
     if (name != null) item.name = name;
-    if (quantity != null) item.quantity = quantity;
-    if (unitPrice != null) item.unitPrice = unitPrice;
-    if (lineTotal != null) item.lineTotal = lineTotal;
+    if (quantity != null) item.quantity = _nonNegative(quantity);
+    if (unitPrice != null) item.unitPrice = _nonNegative(unitPrice);
+    if (lineTotal != null) item.lineTotal = _nonNegative(lineTotal);
     notifyListeners();
   }
 
   void updateTotals({double? subtotal, double? tax, double? tip, double? total}) {
-    if (subtotal != null) this.subtotal = subtotal;
-    if (tax != null) this.tax = tax;
-    if (tip != null) this.tip = tip;
-    if (total != null) this.total = total;
+    if (subtotal != null) this.subtotal = _nonNegative(subtotal);
+    if (tax != null) this.tax = _nonNegative(tax);
+    if (tip != null) this.tip = _nonNegative(tip);
+    if (total != null) this.total = _nonNegative(total);
     notifyListeners();
   }
+
+  // Un precio o monto negativo no tiene sentido en una factura — se le
+  // pide al usuario un valor válido en vez de dejar que el cálculo de
+  // reparto arrastre números negativos silenciosamente.
+  double _nonNegative(double value) => value < 0 ? 0 : value;
 }

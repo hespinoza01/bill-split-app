@@ -68,22 +68,24 @@ class _ReviewBody extends StatelessWidget {
           _TotalsFields(vm: vm),
           const SizedBox(height: 24),
           FilledButton(
-            onPressed: () {
-              final reviewed = ReviewedBillData(
-                restaurantName: vm.restaurantName,
-                items: vm.items
-                    .map((i) => BillLineItemSummary(name: i.name, lineTotal: i.lineTotal))
-                    .toList(),
-                subtotal: vm.subtotal,
-                tax: vm.tax,
-                tip: vm.tip,
-                total: vm.total,
-              );
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => PeopleSelectionScreen(bill: reviewed)),
-              );
-            },
-            child: const Text('Continuar'),
+            onPressed: vm.items.isEmpty
+                ? null
+                : () {
+                    final reviewed = ReviewedBillData(
+                      restaurantName: vm.restaurantName,
+                      items: vm.items
+                          .map((i) => BillLineItemSummary(name: i.name, lineTotal: i.lineTotal))
+                          .toList(),
+                      subtotal: vm.subtotal,
+                      tax: vm.tax,
+                      tip: vm.tip,
+                      total: vm.total,
+                    );
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => PeopleSelectionScreen(bill: reviewed)),
+                    );
+                  },
+            child: Text(vm.items.isEmpty ? 'Agrega al menos un ítem para continuar' : 'Continuar'),
           ),
         ],
       ),

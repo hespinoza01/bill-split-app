@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../data/db/app_database.dart';
 import '../assignment/reviewed_bill_data.dart';
 import '../../services/share_service.dart';
+import 'person_total_card.dart';
 import 'split_calculator.dart';
 
 /// Fase 5: resumen final — cuánto le toca pagar a cada persona, con botón
@@ -62,7 +63,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: personTotals.length,
-              itemBuilder: (context, index) => _PersonCard(
+              itemBuilder: (context, index) => PersonTotalCard(
                 personTotal: personTotals[index],
                 onShare: () => _shareService.sharePersonTotal(personTotals[index], widget.bill),
               ),
@@ -120,64 +121,5 @@ class _SummaryScreenState extends State<SummaryScreen> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
-  }
-}
-
-class _PersonCard extends StatelessWidget {
-  final PersonTotal personTotal;
-  final VoidCallback onShare;
-
-  const _PersonCard({required this.personTotal, required this.onShare});
-
-  @override
-  Widget build(BuildContext context) {
-    final currency = NumberFormat.simpleCurrency();
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(child: Text(personTotal.person.avatarInitials)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(personTotal.person.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                ),
-                Text(currency.format(personTotal.total), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ...personTotal.items.map((item) {
-              final sharedNote = item.sharedWithCount > 1 ? ' (compartido entre ${item.sharedWithCount})' : '';
-              return Padding(
-                padding: const EdgeInsets.only(left: 52, bottom: 2),
-                child: Text('${item.itemName}$sharedNote — ${currency.format(item.shareAmount)}',
-                    style: const TextStyle(fontSize: 13, color: Colors.grey)),
-              );
-            }),
-            if (personTotal.taxShare > 0 || personTotal.tipShare > 0)
-              Padding(
-                padding: const EdgeInsets.only(left: 52, top: 4),
-                child: Text(
-                  'Impuesto: ${currency.format(personTotal.taxShare)} · Propina: ${currency.format(personTotal.tipShare)}',
-                  style: const TextStyle(fontSize: 13, color: Colors.grey),
-                ),
-              ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton.icon(
-                onPressed: onShare,
-                icon: const Icon(Icons.share, size: 18),
-                label: const Text('Compartir'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

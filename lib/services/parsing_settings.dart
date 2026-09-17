@@ -2,33 +2,109 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'gemini_parsing_service.dart';
 import 'local_parsing_service.dart';
+import 'openai_compatible_parsing_service.dart';
 import 'receipt_parsing_service.dart';
 import 'secure_key_store.dart';
 
-/// Whether the user opted into cloud parsing (Gemini) instead of the
-/// on-device default (Qwen). Stored as a plain preference — not a secret,
-/// unlike the API key itself (see SecureKeyStore).
+enum ParsingEngine { localQwen, localDeepSeek, gemini, groq, customOpenAi }
+
+const groqBaseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+const groqDefaultModel = 'llama-3.3-70b-versatile';
+const geminiDefaultModel = 'gemini-2.5-flash';
+
+/// Qué motor de parseo usar (local u otro), y la config de cada proveedor
+/// cloud (modelo, endpoint) — todo en SharedPreferences (no son secretos,
+/// a diferencia de las API keys que viven en SecureKeyStore).
 class ParsingSettings {
-  static const _useGeminiKey = 'use_gemini_cloud';
+  static const _engineKey = 'parsing_engine';
+  static const _geminiModelKey = 'gemini_model';
+  static const _groqModelKey = 'groq_model';
+  static const _customEndpointKey = 'custom_endpoint';
+  static const _customModelKey = 'custom_model';
 
-  Future<bool> getUseGemini() async {
+  Future<ParsingEngine> getEngine() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_useGeminiKey) ?? false;
+    final stored = prefs.getString(_engineKey);
+    return ParsingEngine.values.firstWhere(
+      (e) => e.name == stored,
+      orElse: () => ParsingEngine.localQwen,
+    );
   }
 
-  Future<void> setUseGemini(bool value) async {
+  Future<void> setEngine(ParsingEngine engine) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_useGeminiKey, value);
+    await prefs.setString(_engineKey, engine.name);
   }
 
-  /// Builds the active parser per current settings. Falls back to the local
-  /// parser if Gemini is selected but no key is stored yet.
+  Future<String> getGeminiModel() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_geminiModelKey) ?? geminiDefaultModel;
+  }
+
+  Future<void> setGeminiModel(String model) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_geminiModelKey, model);
+  }
+
+  Future<String> getGroqModel() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_groqModelKey) ?? groqDefaultModel;
+  }
+
+  Future<void> setGroqModel(String model) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_groqModelKey, model);
+  }
+
+  Future<String> getCustomEndpoint() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_customEndpointKey) ?? '';
+  }
+
+  Future<void> setCustomEndpoint(String endpoint) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_customEndpointKey, endpoint);
+  }
+
+  Future<String> getCustomModel() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_customModelKey) ?? '';
+  }
+
+  Future<void> setCustomModel(String model) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_customModelKey, model);
+  }
+
+  /// Arma el parser activo según el motor elegido. Si es un motor cloud sin
+  /// key guardada (o "Otro" sin endpoint), cae al local Qwen — nunca deja a
+  /// la app sin forma de parsear.
   Future<ReceiptParsingService> buildActiveParser() async {
-    final useGemini = await getUseGemini();
-    if (useGemini) {
-      final key = await SecureKeyStore().getGeminiKey();
-      if (key != null && key.isNotEmpty) return GeminiParsingService(key);
+    final engine = await getEngine();
+    final keyStore = SecureKeyStore();
+
+    switch (engine) {
+      case ParsingEngine.localQwen:
+        return const LocalParsingService(LocalModels.qwen);
+      case ParsingEngine.localDeepSeek:
+        return const LocalParsingService(LocalModels.deepSeekR1);
+      case ParsingEngine.gemini:
+        final key = await keyStore.getGeminiKey();
+        if (key != null && key.isNotEmpty) {
+          return GeminiParsingService(key, await getGeminiModel());
+        }
+      case ParsingEngine.groq:
+        final key = await keyStore.getGroqKey();
+        if (key != null && key.isNotEmpty) {
+          return OpenAiCompatibleParsingService(baseUrl: groqBaseUrl, apiKey: key, model: await getGroqModel());
+        }
+      case ParsingEngine.customOpenAi:
+        final key = await keyStore.getCustomKey();
+        final endpoint = await getCustomEndpoint();
+        if (key != null && key.isNotEmpty && endpoint.isNotEmpty) {
+          return OpenAiCompatibleParsingService(baseUrl: endpoint, apiKey: key, model: await getCustomModel());
+        }
     }
-    return LocalParsingService();
+    return const LocalParsingService(LocalModels.qwen);
   }
 }

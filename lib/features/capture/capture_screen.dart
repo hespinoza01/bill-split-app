@@ -134,7 +134,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
               children: [
                 CircularProgressIndicator(),
                 SizedBox(height: 12),
-                Text('Leyendo texto (OCR local)...'),
+                Text('Leyendo el texto de la imagen...'),
               ],
             ),
           ),
@@ -144,7 +144,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
               children: [
                 CircularProgressIndicator(),
                 SizedBox(height: 12),
-                Text('Parseando con IA...'),
+                Text('Extrayendo los datos de la factura...'),
               ],
             ),
           ),

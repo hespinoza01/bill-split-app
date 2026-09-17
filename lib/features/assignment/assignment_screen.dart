@@ -118,7 +118,11 @@ class _AssignmentBody extends StatelessWidget {
             onPressed: vm.allItemsAssigned
                 ? () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Cálculo de reparto y resumen — Fase 5, próximamente.')),
+                      const SnackBar(
+                        content: Text(
+                          'El cálculo del reparto y el resumen final todavía no están disponibles. Estarán listos pronto.',
+                        ),
+                      ),
                     );
                   }
                 : null,

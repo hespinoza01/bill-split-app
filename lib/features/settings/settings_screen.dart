@@ -125,7 +125,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   else if (!_modelInstalled)
                     FilledButton(onPressed: _downloadModel, child: const Text('Descargar modelo (~1.6GB)'))
                   else
-                    const Text('Listo pa usar.', style: TextStyle(color: Colors.green)),
+                    const Text('Listo para usar.', style: TextStyle(color: Colors.green)),
                 ],
               ),
             ),
@@ -139,7 +139,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Usar Gemini (cloud) en vez del local'),
+                    title: const Text('Usar Gemini (en la nube) en vez del modelo local'),
                     subtitle: const Text('Más rápido y preciso, pero requiere tu propia API key y conexión.'),
                     value: _useGemini,
                     onChanged: (v) async {

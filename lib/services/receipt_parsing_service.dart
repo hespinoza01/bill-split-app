@@ -29,7 +29,10 @@ sin ```) con esta forma exacta:
 }
 
 Si un campo no aparece en el texto, usa 0 (números) o null (restaurantName).
-Si quantity no aparece, usa 1.
+Si quantity no aparece, usa 1. Presta atención a notaciones como "x4", "×2",
+"2x" o una columna de cantidad separada junto al nombre del ítem — ahí
+quantity es ese número, unitPrice es el precio de una unidad, y lineTotal
+es el total de esa línea (quantity × unitPrice).
 
 Texto OCR:
 """

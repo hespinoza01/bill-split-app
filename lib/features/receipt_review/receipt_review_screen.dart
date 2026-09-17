@@ -59,7 +59,7 @@ class _ReviewBody extends StatelessWidget {
             ),
           Text('Ítems', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          ...List.generate(vm.items.length, (i) => _ItemRow(index: i)),
+          ...List.generate(vm.items.length, (i) => _ItemRow(key: ValueKey(vm.items[i].id), index: i)),
           TextButton.icon(
             onPressed: vm.addEmptyItem,
             icon: const Icon(Icons.add),
@@ -96,41 +96,75 @@ class _ReviewBody extends StatelessWidget {
 
 class _ItemRow extends StatelessWidget {
   final int index;
-  const _ItemRow({required this.index});
+  const _ItemRow({super.key, required this.index});
 
   @override
   Widget build(BuildContext context) {
     final vm = context.read<ReceiptReviewViewModel>();
     final item = context.watch<ReceiptReviewViewModel>().items[index];
+    final qty = item.quantity.round();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.all(8),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 3,
-              child: TextFormField(
-                initialValue: item.name,
-                decoration: const InputDecoration(labelText: 'Nombre', isDense: true),
-                onChanged: (v) => vm.updateItem(index, name: v),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: TextFormField(
+                    initialValue: item.name,
+                    decoration: const InputDecoration(labelText: 'Nombre', isDense: true),
+                    onChanged: (v) => vm.updateItem(index, name: v),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 64,
+                  child: TextFormField(
+                    initialValue: qty.toString(),
+                    decoration: const InputDecoration(labelText: 'Cant.', isDense: true),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) => vm.updateItem(index, quantity: double.tryParse(v) ?? item.quantity),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: TextFormField(
+                    initialValue: item.lineTotal.toStringAsFixed(2),
+                    decoration: const InputDecoration(labelText: 'Precio total', isDense: true),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (v) => vm.updateItem(index, lineTotal: double.tryParse(v) ?? item.lineTotal),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  onPressed: () => vm.removeItem(index),
+                ),
+              ],
+            ),
+            if (qty > 1)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Son $qty unidades. Si cada persona consumió una distinta, divídelo para asignarlas por separado.',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => vm.splitItemIntoUnits(index),
+                      child: const Text('Dividir'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 2,
-              child: TextFormField(
-                initialValue: item.lineTotal.toStringAsFixed(2),
-                decoration: const InputDecoration(labelText: 'Precio', isDense: true),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                onChanged: (v) => vm.updateItem(index, lineTotal: double.tryParse(v) ?? item.lineTotal),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20),
-              onPressed: () => vm.removeItem(index),
-            ),
           ],
         ),
       ),

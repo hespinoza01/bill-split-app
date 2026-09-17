@@ -3,6 +3,14 @@ import 'package:flutter/foundation.dart';
 import '../../data/models/parsed_receipt.dart';
 
 class EditableLineItem {
+  static int _nextId = 0;
+
+  /// Identidad estable de este ítem en la sesión de edición — no viene de
+  /// la DB (todavía no se guardó nada). Sirve de `Key` para la fila en la
+  /// UI, así Flutter no reusa por error el widget/estado de un ítem viejo
+  /// cuando la lista cambia de tamaño (ej. al dividir uno en unidades).
+  final int id;
+
   String name;
   double quantity;
   double unitPrice;
@@ -13,7 +21,7 @@ class EditableLineItem {
     required this.quantity,
     required this.unitPrice,
     required this.lineTotal,
-  });
+  }) : id = _nextId++;
 
   factory EditableLineItem.fromParsed(ParsedLineItem p) {
     return EditableLineItem(name: p.name, quantity: p.quantity, unitPrice: p.unitPrice, lineTotal: p.lineTotal);
@@ -77,6 +85,31 @@ class ReceiptReviewViewModel extends ChangeNotifier {
 
   void removeItem(int index) {
     items.removeAt(index);
+    notifyListeners();
+  }
+
+  /// Convierte un ítem con cantidad >1 (ej. "Refresco x4 — $10.00") en N
+  /// tarjetas independientes de 1 unidad c/u — así cada una se puede asignar
+  /// a una persona distinta en vez de forzar un reparto parejo entre todos
+  /// los que se marquen. Reparte los centavos exactos (el resto va a las
+  /// primeras unidades) para que la suma nunca quede desfasada del total
+  /// original del ítem.
+  void splitItemIntoUnits(int index) {
+    final item = items[index];
+    final qty = item.quantity.round();
+    if (qty <= 1) return;
+
+    final totalCents = (item.lineTotal * 100).round();
+    final baseCents = totalCents ~/ qty;
+    final remainderCents = totalCents - baseCents * qty;
+
+    final units = List.generate(qty, (i) {
+      final cents = baseCents + (i < remainderCents ? 1 : 0);
+      return EditableLineItem(name: item.name, quantity: 1, unitPrice: cents / 100, lineTotal: cents / 100);
+    });
+
+    items.removeAt(index);
+    items.insertAll(index, units);
     notifyListeners();
   }
 

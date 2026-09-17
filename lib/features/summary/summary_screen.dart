@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../data/db/app_database.dart';
 import '../assignment/reviewed_bill_data.dart';
 import '../../services/share_service.dart';
+import 'full_bill_view.dart';
 import 'person_total_card.dart';
 import 'split_calculator.dart';
 
@@ -43,42 +44,55 @@ class _SummaryScreenState extends State<SummaryScreen> {
     final sumOfTotals = personTotals.fold(0.0, (sum, p) => sum + p.total);
     final mismatch = (sumOfTotals - widget.bill.total).abs() > 0.05;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Resumen')),
-      body: Column(
-        children: [
-          if (mismatch)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: Colors.amber.shade100,
-              child: Text(
-                'La suma de lo que le toca a cada quien (${currency.format(sumOfTotals)}) no coincide '
-                'exactamente con el total de la factura (${currency.format(widget.bill.total)}). '
-                'Puede ser redondeo, o algo quedó mal en la revisión.',
-                style: const TextStyle(fontSize: 12),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Resumen'),
+          bottom: const TabBar(
+            tabs: [Tab(text: 'Por persona'), Tab(text: 'Factura completa')],
+          ),
+        ),
+        body: Column(
+          children: [
+            if (mismatch)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                color: Colors.amber.shade100,
+                child: Text(
+                  'La suma de lo que le toca a cada quien (${currency.format(sumOfTotals)}) no coincide '
+                  'exactamente con el total de la factura (${currency.format(widget.bill.total)}). '
+                  'Puede ser redondeo, o algo quedó mal en la revisión.',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: personTotals.length,
+                    itemBuilder: (context, index) => PersonTotalCard(
+                      personTotal: personTotals[index],
+                      onShare: () => _shareService.sharePersonTotal(personTotals[index], widget.bill),
+                    ),
+                  ),
+                  FullBillView(bill: widget.bill),
+                ],
               ),
             ),
-          Expanded(
-            child: ListView.builder(
+            Padding(
               padding: const EdgeInsets.all(16),
-              itemCount: personTotals.length,
-              itemBuilder: (context, index) => PersonTotalCard(
-                personTotal: personTotals[index],
-                onShare: () => _shareService.sharePersonTotal(personTotals[index], widget.bill),
+              child: FilledButton(
+                onPressed: _saving ? null : () => _saveBill(personTotals),
+                child: _saving
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Guardar factura'),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: FilledButton(
-              onPressed: _saving ? null : () => _saveBill(personTotals),
-              child: _saving
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Guardar factura'),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../data/db/app_database.dart';
 import '../assignment/reviewed_bill_data.dart';
 import '../../services/share_service.dart';
+import 'full_bill_view.dart';
 import 'person_total_card.dart';
 import 'split_calculator.dart';
 
@@ -18,33 +19,46 @@ class BillDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final db = context.read<AppDatabase>();
-    return Scaffold(
-      appBar: AppBar(title: const Text('Factura')),
-      body: FutureBuilder<_BillDetailData>(
-        future: _loadBillDetail(db, billId),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text('No se pudo cargar la factura: ${snapshot.error}'),
-              ),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Factura'),
+          bottom: const TabBar(
+            tabs: [Tab(text: 'Por persona'), Tab(text: 'Factura completa')],
+          ),
+        ),
+        body: FutureBuilder<_BillDetailData>(
+          future: _loadBillDetail(db, billId),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text('No se pudo cargar la factura: ${snapshot.error}'),
+                ),
+              );
+            }
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final data = snapshot.data!;
+            final shareService = ShareService();
+            return TabBarView(
+              children: [
+                ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: data.personTotals.length,
+                  itemBuilder: (context, index) => PersonTotalCard(
+                    personTotal: data.personTotals[index],
+                    onShare: () => shareService.sharePersonTotal(data.personTotals[index], data.bill),
+                  ),
+                ),
+                FullBillView(bill: data.bill),
+              ],
             );
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final data = snapshot.data!;
-          final shareService = ShareService();
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: data.personTotals.length,
-            itemBuilder: (context, index) => PersonTotalCard(
-              personTotal: data.personTotals[index],
-              onShare: () => shareService.sharePersonTotal(data.personTotals[index], data.bill),
-            ),
-          );
-        },
+          },
+        ),
       ),
     );
   }

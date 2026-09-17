@@ -4,15 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../data/models/parsed_receipt.dart';
 import '../../services/ocr_service.dart';
+import '../../services/parsing_settings.dart';
+import '../receipt_review/receipt_review_screen.dart';
 
-enum _Stage { collecting, runningOcr, done, error }
+enum _Stage { collecting, runningOcr, parsing, error }
 
-/// Fase 2: captura + OCR. Soporta varias fotos por factura (facturas largas
-/// que no caben en una sola imagen) — cada foto se recorta al agregarla, y
-/// el OCR corre sobre todas al tocar "Continuar", concatenando el texto.
-/// Pantalla temporal: en Fase 3 el resultado va hacia Gemini + Review, no
-/// se muestra el texto crudo como destino final.
+/// Captura (Fase 2) + parseo (Fase 3): varias fotos por factura → OCR local
+/// por página → parseo a JSON estructurado (Qwen on-device por defecto, o
+/// Gemini si el usuario lo activó en Settings) → Receipt Review editable.
+/// Si OCR no detecta texto o el parseo falla, cae a entrada manual (receipt
+/// vacío en Review) en vez de bloquear al usuario.
 class CaptureScreen extends StatefulWidget {
   const CaptureScreen({super.key});
 
@@ -26,7 +29,6 @@ class _CaptureScreenState extends State<CaptureScreen> {
   final _pages = <String>[]; // rutas de imágenes ya recortadas, en orden
 
   _Stage _stage = _Stage.collecting;
-  String? _combinedText;
   String? _errorMessage;
 
   @override
@@ -64,6 +66,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
       _errorMessage = null;
     });
 
+    String combinedText;
     try {
       final buffer = StringBuffer();
       for (var i = 0; i < _pages.length; i++) {
@@ -73,16 +76,41 @@ class _CaptureScreenState extends State<CaptureScreen> {
         }
         buffer.writeln(text);
       }
-      setState(() {
-        _combinedText = buffer.toString().trim();
-        _stage = _Stage.done;
-      });
+      combinedText = buffer.toString().trim();
     } catch (e) {
       setState(() {
         _errorMessage = 'No se pudo leer alguna imagen: $e';
         _stage = _Stage.error;
       });
+      return;
     }
+
+    if (combinedText.isEmpty) {
+      // OCR no detectó nada legible — no gastar el parseo, ir directo a
+      // entrada manual.
+      _goToReview(ParsedReceipt.empty());
+      return;
+    }
+
+    setState(() => _stage = _Stage.parsing);
+    try {
+      final parser = await ParsingSettings().buildActiveParser();
+      final parsed = await parser.parseReceipt(combinedText);
+      _goToReview(parsed);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo parsear con IA, entra los ítems a mano: $e')),
+      );
+      _goToReview(ParsedReceipt.empty());
+    }
+  }
+
+  void _goToReview(ParsedReceipt parsed) {
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => ReceiptReviewScreen(parsed: parsed)),
+    );
   }
 
   @override
@@ -101,13 +129,22 @@ class _CaptureScreenState extends State<CaptureScreen> {
               ],
             ),
           ),
+        _Stage.parsing => const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 12),
+                Text('Parseando con IA...'),
+              ],
+            ),
+          ),
         _Stage.error => Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Text(_errorMessage ?? 'Error desconocido', style: const TextStyle(color: Colors.red)),
             ),
           ),
-        _Stage.done => _buildResult(),
       },
     );
   }
@@ -197,21 +234,6 @@ class _CaptureScreenState extends State<CaptureScreen> {
             child: Text(_pages.length > 1 ? 'Continuar (${_pages.length} páginas)' : 'Continuar'),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildResult() {
-    final text = _combinedText ?? '';
-    if (text.isEmpty) {
-      return const Center(
-        child: Text('No se detectó texto legible. Prueba con otra foto o mejor luz.'),
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: SingleChildScrollView(
-        child: SelectableText(text, style: const TextStyle(fontFamily: 'monospace')),
       ),
     );
   }

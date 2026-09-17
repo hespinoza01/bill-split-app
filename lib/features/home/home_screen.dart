@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/db/app_database.dart';
 import '../capture/capture_screen.dart';
+import '../settings/settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -14,7 +15,19 @@ class HomeScreen extends StatelessWidget {
     final currency = NumberFormat.simpleCurrency();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Facturas')),
+      appBar: AppBar(
+        title: const Text('Facturas'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+          ),
+        ],
+      ),
       body: StreamBuilder<List<Bill>>(
         stream: db.billsDao.watchAllBills(),
         builder: (context, snapshot) {

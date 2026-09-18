@@ -11,6 +11,18 @@ class LocalModelSpec {
   final String fileName;
   final String url;
   final String sizeLabel;
+  // Debe ser <= el ekv (contexto/KV-cache) con el que se compiló el .task —
+  // pedir más a getActiveModel() causa un SIGSEGV nativo en MediaPipe
+  // (confirmado con tombstone real). Va en el nombre del archivo.
+  final int maxTokens;
+  // temperature/topK cercanos a 0 (greedy) andan bien en modelos instruct
+  // normales (Qwen), pero en modelos de razonamiento (DeepSeek R1) greedy
+  // decoding dispara loops de repetición dentro del `<think>` que nunca
+  // cierra — se come todo el maxTokens sin llegar al JSON (confirmado: ~5-10
+  // min al 100% CPU y falla igual). DeepSeek recomienda oficialmente NO usar
+  // greedy en R1, temperature ~0.6.
+  final double temperature;
+  final int topK;
 
   const LocalModelSpec({
     required this.label,
@@ -18,6 +30,9 @@ class LocalModelSpec {
     required this.fileName,
     required this.url,
     required this.sizeLabel,
+    required this.maxTokens,
+    required this.temperature,
+    required this.topK,
   });
 }
 
@@ -31,15 +46,27 @@ class LocalModels {
     url:
         'https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task',
     sizeLabel: '~1.6GB',
+    maxTokens: 1280,
+    temperature: 0.1,
+    topK: 1,
   );
 
+  // Variante ekv4096 (no la ekv1280 original): DeepSeek R1 es modelo de
+  // razonamiento — gasta buena parte del contexto en su cadena `<think>`
+  // antes de llegar al JSON. Con 1280 tokens totales (prompt + think + JSON)
+  // el think solo ya se comía todo el presupuesto y el modelo nunca llegaba
+  // a emitir el JSON (FormatException real reportado: "no devolvió datos
+  // válidos tras reintentar"). 4096 le da margen real para pensar y responder.
   static const deepSeekR1 = LocalModelSpec(
     label: 'DeepSeek R1 1.5B',
     modelType: ModelType.deepSeek,
-    fileName: 'DeepSeek-R1-Distill-Qwen-1.5B_multi-prefill-seq_q8_ekv1280.task',
+    fileName: 'DeepSeek-R1-Distill-Qwen-1.5B_multi-prefill-seq_q8_ekv4096.task',
     url:
-        'https://huggingface.co/litert-community/DeepSeek-R1-Distill-Qwen-1.5B/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B_multi-prefill-seq_q8_ekv1280.task',
-    sizeLabel: '~1.9GB',
+        'https://huggingface.co/litert-community/DeepSeek-R1-Distill-Qwen-1.5B/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B_multi-prefill-seq_q8_ekv4096.task',
+    sizeLabel: '~2.0GB',
+    maxTokens: 4096,
+    temperature: 0.6,
+    topK: 40,
   );
 
   static const all = [qwen, deepSeekR1];
@@ -111,13 +138,16 @@ class LocalParsingService implements ReceiptParsingService {
 
   Future<String> _runInference(String prompt) async {
     final model = await FlutterGemma.getActiveModel(
-      maxTokens: 2048,
+      maxTokens: spec.maxTokens,
       preferredBackend: PreferredBackend.cpu,
     );
-    final session = await model.createSession(temperature: 0.1, topK: 1);
+    final session = await model.createSession(temperature: spec.temperature, topK: spec.topK);
     try {
       await session.addQueryChunk(Message.text(text: prompt, isUser: true));
-      return await session.getResponse();
+      // Cota dura: si el modelo entra en loop de repetición igual (no
+      // debería con temperature/topK correctos, pero por las dudas), que
+      // falle en 3 min en vez de dejar a la persona esperando 10+.
+      return await session.getResponse().timeout(const Duration(minutes: 3));
     } finally {
       await session.close();
     }

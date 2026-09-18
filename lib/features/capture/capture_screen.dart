@@ -103,8 +103,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('No se pudo leer la factura automáticamente'),
-          content: const Text(
-            'Vamos a abrir la lista de ítems vacía para que la completes a mano.',
+          content: SingleChildScrollView(
+            child: Text(
+              'Vamos a abrir la lista de ítems vacía para que la completes a mano.\n\n'
+              'Detalle técnico (útil para diagnosticar): $e',
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Entendido')),

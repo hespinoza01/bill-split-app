@@ -21,18 +21,26 @@ class OpenAiCompatibleParsingService implements ReceiptParsingService {
   @override
   Future<ParsedReceipt> parseReceipt(String ocrText) async {
     final uri = Uri.parse(baseUrl);
+    // Sin response_format: no todo proveedor "compatible" lo soporta de
+    // verdad (MiniMax M2.x/M3 vía su endpoint OpenAI-compat NO lo soporta —
+    // solo su modelo nativo MiniMax-Text-01 — y mandarlo igual hacía que el
+    // request se colgara hasta el timeout, siempre, con cualquier modelo
+    // MiniMax probado). El prompt ya pide JSON puro y extractJsonObject ya
+    // tolera texto/markdown alrededor, así que no hace falta el parámetro.
     final body = jsonEncode({
       'model': model,
       'messages': [
         {'role': 'user', 'content': buildReceiptParsingPrompt(ocrText)},
       ],
-      'response_format': {'type': 'json_object'},
       'temperature': 0.1,
     });
 
+    // 90s: modelos de razonamiento (MiniMax M3, DeepSeek vía Groq, etc.)
+    // tardan bastante más que un chat directo — 30s cortaba la respuesta
+    // antes de completar (TimeoutException real reportado con MiniMax M3).
     final response = await http
         .post(uri, headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $apiKey'}, body: body)
-        .timeout(const Duration(seconds: 30));
+        .timeout(const Duration(seconds: 90));
 
     if (response.statusCode != 200) {
       throw OpenAiCompatibleApiException(response.statusCode, response.body);

@@ -1854,8 +1854,21 @@ class $BillPeopleTable extends BillPeople
       'REFERENCES people (id) ON DELETE CASCADE',
     ),
   );
+  static const VerificationMeta _isPaidMeta = const VerificationMeta('isPaid');
   @override
-  List<GeneratedColumn> get $columns => [id, billId, personId];
+  late final GeneratedColumn<bool> isPaid = GeneratedColumn<bool>(
+    'is_paid',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_paid" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, billId, personId, isPaid];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1887,6 +1900,12 @@ class $BillPeopleTable extends BillPeople
     } else if (isInserting) {
       context.missing(_personIdMeta);
     }
+    if (data.containsKey('is_paid')) {
+      context.handle(
+        _isPaidMeta,
+        isPaid.isAcceptableOrUnknown(data['is_paid']!, _isPaidMeta),
+      );
+    }
     return context;
   }
 
@@ -1912,6 +1931,10 @@ class $BillPeopleTable extends BillPeople
         DriftSqlType.int,
         data['${effectivePrefix}person_id'],
       )!,
+      isPaid: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_paid'],
+      )!,
     );
   }
 
@@ -1925,10 +1948,12 @@ class BillPeopleData extends DataClass implements Insertable<BillPeopleData> {
   final int id;
   final int billId;
   final int personId;
+  final bool isPaid;
   const BillPeopleData({
     required this.id,
     required this.billId,
     required this.personId,
+    required this.isPaid,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1936,6 +1961,7 @@ class BillPeopleData extends DataClass implements Insertable<BillPeopleData> {
     map['id'] = Variable<int>(id);
     map['bill_id'] = Variable<int>(billId);
     map['person_id'] = Variable<int>(personId);
+    map['is_paid'] = Variable<bool>(isPaid);
     return map;
   }
 
@@ -1944,6 +1970,7 @@ class BillPeopleData extends DataClass implements Insertable<BillPeopleData> {
       id: Value(id),
       billId: Value(billId),
       personId: Value(personId),
+      isPaid: Value(isPaid),
     );
   }
 
@@ -1956,6 +1983,7 @@ class BillPeopleData extends DataClass implements Insertable<BillPeopleData> {
       id: serializer.fromJson<int>(json['id']),
       billId: serializer.fromJson<int>(json['billId']),
       personId: serializer.fromJson<int>(json['personId']),
+      isPaid: serializer.fromJson<bool>(json['isPaid']),
     );
   }
   @override
@@ -1965,20 +1993,27 @@ class BillPeopleData extends DataClass implements Insertable<BillPeopleData> {
       'id': serializer.toJson<int>(id),
       'billId': serializer.toJson<int>(billId),
       'personId': serializer.toJson<int>(personId),
+      'isPaid': serializer.toJson<bool>(isPaid),
     };
   }
 
-  BillPeopleData copyWith({int? id, int? billId, int? personId}) =>
-      BillPeopleData(
-        id: id ?? this.id,
-        billId: billId ?? this.billId,
-        personId: personId ?? this.personId,
-      );
+  BillPeopleData copyWith({
+    int? id,
+    int? billId,
+    int? personId,
+    bool? isPaid,
+  }) => BillPeopleData(
+    id: id ?? this.id,
+    billId: billId ?? this.billId,
+    personId: personId ?? this.personId,
+    isPaid: isPaid ?? this.isPaid,
+  );
   BillPeopleData copyWithCompanion(BillPeopleCompanion data) {
     return BillPeopleData(
       id: data.id.present ? data.id.value : this.id,
       billId: data.billId.present ? data.billId.value : this.billId,
       personId: data.personId.present ? data.personId.value : this.personId,
+      isPaid: data.isPaid.present ? data.isPaid.value : this.isPaid,
     );
   }
 
@@ -1987,46 +2022,53 @@ class BillPeopleData extends DataClass implements Insertable<BillPeopleData> {
     return (StringBuffer('BillPeopleData(')
           ..write('id: $id, ')
           ..write('billId: $billId, ')
-          ..write('personId: $personId')
+          ..write('personId: $personId, ')
+          ..write('isPaid: $isPaid')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, billId, personId);
+  int get hashCode => Object.hash(id, billId, personId, isPaid);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is BillPeopleData &&
           other.id == this.id &&
           other.billId == this.billId &&
-          other.personId == this.personId);
+          other.personId == this.personId &&
+          other.isPaid == this.isPaid);
 }
 
 class BillPeopleCompanion extends UpdateCompanion<BillPeopleData> {
   final Value<int> id;
   final Value<int> billId;
   final Value<int> personId;
+  final Value<bool> isPaid;
   const BillPeopleCompanion({
     this.id = const Value.absent(),
     this.billId = const Value.absent(),
     this.personId = const Value.absent(),
+    this.isPaid = const Value.absent(),
   });
   BillPeopleCompanion.insert({
     this.id = const Value.absent(),
     required int billId,
     required int personId,
+    this.isPaid = const Value.absent(),
   }) : billId = Value(billId),
        personId = Value(personId);
   static Insertable<BillPeopleData> custom({
     Expression<int>? id,
     Expression<int>? billId,
     Expression<int>? personId,
+    Expression<bool>? isPaid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (billId != null) 'bill_id': billId,
       if (personId != null) 'person_id': personId,
+      if (isPaid != null) 'is_paid': isPaid,
     });
   }
 
@@ -2034,11 +2076,13 @@ class BillPeopleCompanion extends UpdateCompanion<BillPeopleData> {
     Value<int>? id,
     Value<int>? billId,
     Value<int>? personId,
+    Value<bool>? isPaid,
   }) {
     return BillPeopleCompanion(
       id: id ?? this.id,
       billId: billId ?? this.billId,
       personId: personId ?? this.personId,
+      isPaid: isPaid ?? this.isPaid,
     );
   }
 
@@ -2054,6 +2098,9 @@ class BillPeopleCompanion extends UpdateCompanion<BillPeopleData> {
     if (personId.present) {
       map['person_id'] = Variable<int>(personId.value);
     }
+    if (isPaid.present) {
+      map['is_paid'] = Variable<bool>(isPaid.value);
+    }
     return map;
   }
 
@@ -2062,7 +2109,8 @@ class BillPeopleCompanion extends UpdateCompanion<BillPeopleData> {
     return (StringBuffer('BillPeopleCompanion(')
           ..write('id: $id, ')
           ..write('billId: $billId, ')
-          ..write('personId: $personId')
+          ..write('personId: $personId, ')
+          ..write('isPaid: $isPaid')
           ..write(')'))
         .toString();
   }
@@ -4361,12 +4409,14 @@ typedef $$BillPeopleTableCreateCompanionBuilder =
       Value<int> id,
       required int billId,
       required int personId,
+      Value<bool> isPaid,
     });
 typedef $$BillPeopleTableUpdateCompanionBuilder =
     BillPeopleCompanion Function({
       Value<int> id,
       Value<int> billId,
       Value<int> personId,
+      Value<bool> isPaid,
     });
 
 final class $$BillPeopleTableReferences
@@ -4442,6 +4492,11 @@ class $$BillPeopleTableFilterComposer
   });
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPaid => $composableBuilder(
+    column: $table.isPaid,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4531,6 +4586,11 @@ class $$BillPeopleTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isPaid => $composableBuilder(
+    column: $table.isPaid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$BillsTableOrderingComposer get billId {
     final $$BillsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -4589,6 +4649,9 @@ class $$BillPeopleTableAnnotationComposer
   });
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<bool> get isPaid =>
+      $composableBuilder(column: $table.isPaid, builder: (column) => column);
 
   $$BillsTableAnnotationComposer get billId {
     final $$BillsTableAnnotationComposer composer = $composerBuilder(
@@ -4697,20 +4760,24 @@ class $$BillPeopleTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> billId = const Value.absent(),
                 Value<int> personId = const Value.absent(),
+                Value<bool> isPaid = const Value.absent(),
               }) => BillPeopleCompanion(
                 id: id,
                 billId: billId,
                 personId: personId,
+                isPaid: isPaid,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required int billId,
                 required int personId,
+                Value<bool> isPaid = const Value.absent(),
               }) => BillPeopleCompanion.insert(
                 id: id,
                 billId: billId,
                 personId: personId,
+                isPaid: isPaid,
               ),
           withReferenceMapper: (p0) => p0
               .map(

@@ -65,6 +65,7 @@ class BillPeople extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get billId => integer().references(Bills, #id, onDelete: KeyAction.cascade)();
   IntColumn get personId => integer().references(People, #id, onDelete: KeyAction.cascade)();
+  BoolColumn get isPaid => boolean().withDefault(const Constant(false))();
 
   @override
   List<Set<Column>> get uniqueKeys => [
@@ -95,7 +96,15 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) await m.addColumn(billPeople, billPeople.isPaid);
+        },
+      );
 }
 
 LazyDatabase _openConnection() {

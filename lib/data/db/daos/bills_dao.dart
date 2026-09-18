@@ -25,6 +25,14 @@ class BillsDao extends DatabaseAccessor<AppDatabase> with _$BillsDaoMixin {
     return (select(billPeople)..where((bp) => bp.billId.equals(billId))).get();
   }
 
+  // Stream (no Future): así el badge de estado de pago se actualiza solo
+  // cuando isPaid cambia, sin depender de que watchAllBills() reemita (no
+  // observa esta tabla) — y Drift dedupea streams idénticos, evitando
+  // re-queries/parpadeo en cada rebuild de la lista.
+  Stream<List<BillPeopleData>> watchBillPeopleForBill(int billId) {
+    return (select(billPeople)..where((bp) => bp.billId.equals(billId))).watch();
+  }
+
   Future<List<Assignment>> assignmentsForLineItems(List<int> lineItemIds) {
     return (select(assignments)..where((a) => a.lineItemId.isIn(lineItemIds))).get();
   }
@@ -53,6 +61,12 @@ class BillsDao extends DatabaseAccessor<AppDatabase> with _$BillsDaoMixin {
     await transaction(() async {
       await (update(bills)..where((b) => b.id.equals(billId))).write(billUpdate);
 
+      // Se recuerda quién ya había pagado ANTES de borrar/recrear BillPeople
+      // — si no, editar una factura (ej. corregir el nombre del lugar)
+      // borraría en silencio las marcas de "pagó" que ya se habían puesto.
+      final previousPeople = await (select(billPeople)..where((bp) => bp.billId.equals(billId))).get();
+      final wasPaidByPersonId = {for (final bp in previousPeople) bp.personId: bp.isPaid};
+
       await (delete(lineItems)..where((li) => li.billId.equals(billId))).go();
       await (delete(billPeople)..where((bp) => bp.billId.equals(billId))).go();
 
@@ -65,7 +79,11 @@ class BillsDao extends DatabaseAccessor<AppDatabase> with _$BillsDaoMixin {
       final billPersonIdByPersonId = <int, int>{};
       for (final personId in personIds) {
         final bpId = await into(billPeople).insert(
-          BillPeopleCompanion.insert(billId: billId, personId: personId),
+          BillPeopleCompanion.insert(
+            billId: billId,
+            personId: personId,
+            isPaid: Value(wasPaidByPersonId[personId] ?? false),
+          ),
         );
         billPersonIdByPersonId[personId] = bpId;
       }
@@ -87,4 +105,9 @@ class BillsDao extends DatabaseAccessor<AppDatabase> with _$BillsDaoMixin {
   }
 
   Future<void> deleteBill(int billId) => (delete(bills)..where((b) => b.id.equals(billId))).go();
+
+  Future<void> setBillPersonPaid(int billPersonId, bool paid) {
+    return (update(billPeople)..where((bp) => bp.id.equals(billPersonId)))
+        .write(BillPeopleCompanion(isPaid: Value(paid)));
+  }
 }

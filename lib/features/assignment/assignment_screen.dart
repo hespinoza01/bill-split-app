@@ -13,8 +13,16 @@ import 'reviewed_bill_data.dart';
 class AssignmentScreen extends StatefulWidget {
   final ReviewedBillData bill;
   final List<int> personIds;
+  final int? editingBillId;
+  final Map<int, Set<int>>? initialAssignmentsByItemIndex;
 
-  const AssignmentScreen({super.key, required this.bill, required this.personIds});
+  const AssignmentScreen({
+    super.key,
+    required this.bill,
+    required this.personIds,
+    this.editingBillId,
+    this.initialAssignmentsByItemIndex,
+  });
 
   @override
   State<AssignmentScreen> createState() => _AssignmentScreenState();
@@ -43,8 +51,12 @@ class _AssignmentScreenState extends State<AssignmentScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           return ChangeNotifierProvider(
-            create: (_) => AssignmentViewModel(bill: widget.bill, people: snapshot.data!),
-            child: const _AssignmentBody(),
+            create: (_) => AssignmentViewModel(
+              bill: widget.bill,
+              people: snapshot.data!,
+              initialAssignments: widget.initialAssignmentsByItemIndex,
+            ),
+            child: _AssignmentBody(editingBillId: widget.editingBillId),
           );
         },
       ),
@@ -53,7 +65,8 @@ class _AssignmentScreenState extends State<AssignmentScreen> {
 }
 
 class _AssignmentBody extends StatelessWidget {
-  const _AssignmentBody();
+  final int? editingBillId;
+  const _AssignmentBody({this.editingBillId});
 
   @override
   Widget build(BuildContext context) {
@@ -124,6 +137,7 @@ class _AssignmentBody extends StatelessWidget {
                           bill: vm.bill,
                           people: vm.people,
                           assignmentsByItemIndex: vm.assignmentsSnapshot,
+                          editingBillId: editingBillId,
                         ),
                       ),
                     );

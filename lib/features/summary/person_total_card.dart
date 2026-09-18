@@ -9,8 +9,19 @@ import 'split_calculator.dart';
 class PersonTotalCard extends StatelessWidget {
   final PersonTotal personTotal;
   final VoidCallback onShare;
+  // Solo se muestra el control de pagado/pendiente cuando onPaidChanged no es
+  // null — en el resumen recién calculado (antes de guardar) nadie pagó
+  // todavía, así que ese caso no pasa el callback y el chip no aparece.
+  final bool? isPaid;
+  final ValueChanged<bool>? onPaidChanged;
 
-  const PersonTotalCard({super.key, required this.personTotal, required this.onShare});
+  const PersonTotalCard({
+    super.key,
+    required this.personTotal,
+    required this.onShare,
+    this.isPaid,
+    this.onPaidChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +43,23 @@ class PersonTotalCard extends StatelessWidget {
                 Text(currency.format(personTotal.total), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ],
             ),
+            if (onPaidChanged != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 52, top: 2),
+                child: GestureDetector(
+                  onTap: () => onPaidChanged!(!(isPaid ?? false)),
+                  child: Chip(
+                    avatar: Icon(
+                      isPaid == true ? Icons.check_circle : Icons.hourglass_empty,
+                      size: 16,
+                      color: isPaid == true ? Colors.green : Colors.orange,
+                    ),
+                    label: Text(isPaid == true ? 'Pagó' : 'Pendiente'),
+                    labelStyle: const TextStyle(fontSize: 12),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
             const SizedBox(height: 8),
             ...personTotal.items.map((item) {
               final sharedNote = item.sharedWithCount > 1 ? ' (compartido entre ${item.sharedWithCount})' : '';

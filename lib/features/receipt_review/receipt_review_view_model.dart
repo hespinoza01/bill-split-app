@@ -53,6 +53,13 @@ class ChargeConfig {
 class ReceiptReviewViewModel extends ChangeNotifier {
   String? restaurantName;
   final List<EditableLineItem> items;
+  // Se pone en true si se agrega/borra/divide un ítem — eso corre los
+  // índices de la lista. Si esto pasa durante una edición de factura ya
+  // guardada, las asignaciones precargadas (que vienen mapeadas por índice)
+  // quedarían apuntando al ítem equivocado, asignando plata a la persona
+  // que no es sin ningún error visible. El screen usa esta bandera pa
+  // descartar la precarga de asignaciones en ese caso.
+  bool itemsStructureChanged = false;
   double subtotal;
   ChargeConfig taxConfig;
   ChargeConfig tipConfig;
@@ -80,11 +87,13 @@ class ReceiptReviewViewModel extends ChangeNotifier {
 
   void addEmptyItem() {
     items.add(EditableLineItem(name: '', quantity: 1, unitPrice: 0, lineTotal: 0));
+    itemsStructureChanged = true;
     notifyListeners();
   }
 
   void removeItem(int index) {
     items.removeAt(index);
+    itemsStructureChanged = true;
     notifyListeners();
   }
 
@@ -110,6 +119,7 @@ class ReceiptReviewViewModel extends ChangeNotifier {
 
     items.removeAt(index);
     items.insertAll(index, units);
+    itemsStructureChanged = true;
     notifyListeners();
   }
 
@@ -119,6 +129,11 @@ class ReceiptReviewViewModel extends ChangeNotifier {
     if (quantity != null) item.quantity = _nonNegative(quantity);
     if (unitPrice != null) item.unitPrice = _nonNegative(unitPrice);
     if (lineTotal != null) item.lineTotal = _nonNegative(lineTotal);
+    notifyListeners();
+  }
+
+  void updateRestaurantName(String value) {
+    restaurantName = value.trim().isEmpty ? null : value.trim();
     notifyListeners();
   }
 

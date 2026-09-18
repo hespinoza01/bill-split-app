@@ -12,15 +12,24 @@ import 'reviewed_bill_data.dart';
 /// es solo pa ESTA factura (no altera grupos guardados).
 class PeopleSelectionScreen extends StatefulWidget {
   final ReviewedBillData bill;
+  final int? editingBillId;
+  final Set<int>? initialSelectedPersonIds;
+  final Map<int, Set<int>>? initialAssignmentsByItemIndex;
 
-  const PeopleSelectionScreen({super.key, required this.bill});
+  const PeopleSelectionScreen({
+    super.key,
+    required this.bill,
+    this.editingBillId,
+    this.initialSelectedPersonIds,
+    this.initialAssignmentsByItemIndex,
+  });
 
   @override
   State<PeopleSelectionScreen> createState() => _PeopleSelectionScreenState();
 }
 
 class _PeopleSelectionScreenState extends State<PeopleSelectionScreen> {
-  final _selectedIds = <int>{};
+  late final _selectedIds = <int>{...?widget.initialSelectedPersonIds};
   final _newPersonController = TextEditingController();
 
   @override
@@ -141,7 +150,12 @@ class _PeopleSelectionScreenState extends State<PeopleSelectionScreen> {
                   : () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => AssignmentScreen(bill: widget.bill, personIds: _selectedIds.toList()),
+                          builder: (_) => AssignmentScreen(
+                            bill: widget.bill,
+                            personIds: _selectedIds.toList(),
+                            editingBillId: widget.editingBillId,
+                            initialAssignmentsByItemIndex: widget.initialAssignmentsByItemIndex,
+                          ),
                         ),
                       );
                     },

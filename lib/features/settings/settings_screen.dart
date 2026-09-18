@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../services/gemini_parsing_service.dart';
 import '../../services/local_parsing_service.dart';
 import '../../services/openai_compatible_parsing_service.dart';
 import '../../services/parsing_settings.dart';
 import '../../services/secure_key_store.dart';
+import '../../services/theme_settings.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -37,11 +39,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
 
+    final themeNotifier = context.watch<ThemeModeNotifier>();
+
     return Scaffold(
       appBar: AppBar(title: const Text('Configuración')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Text('Tema', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          RadioListTile<ThemeMode>(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Según el dispositivo'),
+            value: ThemeMode.system,
+            groupValue: themeNotifier.mode,
+            onChanged: (v) => themeNotifier.setMode(v!),
+          ),
+          RadioListTile<ThemeMode>(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Claro'),
+            value: ThemeMode.light,
+            groupValue: themeNotifier.mode,
+            onChanged: (v) => themeNotifier.setMode(v!),
+          ),
+          RadioListTile<ThemeMode>(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Oscuro'),
+            value: ThemeMode.dark,
+            groupValue: themeNotifier.mode,
+            onChanged: (v) => themeNotifier.setMode(v!),
+          ),
+          const SizedBox(height: 20),
+          const Divider(),
+          const SizedBox(height: 4),
           Text('Motor de parseo de facturas', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           Text('Modelo local (en el celular)', style: Theme.of(context).textTheme.titleSmall),

@@ -17,12 +17,16 @@ class SummaryScreen extends StatefulWidget {
   final ReviewedBillData bill;
   final List<PeopleData> people;
   final Map<int, Set<int>> assignmentsByItemIndex;
+  // No-null cuando se llegó acá editando una factura ya guardada —
+  // _saveBill actualiza ese billId en vez de crear uno nuevo.
+  final int? editingBillId;
 
   const SummaryScreen({
     super.key,
     required this.bill,
     required this.people,
     required this.assignmentsByItemIndex,
+    this.editingBillId,
   });
 
   @override
@@ -88,7 +92,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 onPressed: _saving ? null : () => _saveBill(personTotals),
                 child: _saving
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Guardar factura'),
+                    : Text(widget.editingBillId != null ? 'Guardar cambios' : 'Guardar factura'),
               ),
             ),
           ],
@@ -102,7 +106,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
     final db = context.read<AppDatabase>();
     final navigator = Navigator.of(context);
     try {
-      final billId = await db.billsDao.insertDraftBill();
+      final billId = widget.editingBillId ?? await db.billsDao.insertDraftBill();
 
       final lineItemRows = widget.bill.items
           .map((i) => LineItemsCompanion.insert(

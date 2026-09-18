@@ -12,20 +12,46 @@ import 'receipt_review_view_model.dart';
 /// mitigación principal, no un fix técnico del parseo en sí.
 class ReceiptReviewScreen extends StatelessWidget {
   final ParsedReceipt parsed;
+  // Presentes solo cuando se llegó acá desde "Editar" en una factura ya
+  // guardada (BillDetailScreen) — viajan sin tocarse hasta SummaryScreen
+  // (editingBillId, pa actualizar en vez de crear) y hasta
+  // PeopleSelectionScreen/AssignmentScreen (los otros dos, pa precargar la
+  // selección de personas y las asignaciones ya hechas).
+  final int? editingBillId;
+  final Set<int>? initialSelectedPersonIds;
+  final Map<int, Set<int>>? initialAssignmentsByItemIndex;
 
-  const ReceiptReviewScreen({super.key, required this.parsed});
+  const ReceiptReviewScreen({
+    super.key,
+    required this.parsed,
+    this.editingBillId,
+    this.initialSelectedPersonIds,
+    this.initialAssignmentsByItemIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => ReceiptReviewViewModel.fromParsed(parsed),
-      child: const _ReviewBody(),
+      child: _ReviewBody(
+        editingBillId: editingBillId,
+        initialSelectedPersonIds: initialSelectedPersonIds,
+        initialAssignmentsByItemIndex: initialAssignmentsByItemIndex,
+      ),
     );
   }
 }
 
 class _ReviewBody extends StatelessWidget {
-  const _ReviewBody();
+  final int? editingBillId;
+  final Set<int>? initialSelectedPersonIds;
+  final Map<int, Set<int>>? initialAssignmentsByItemIndex;
+
+  const _ReviewBody({
+    this.editingBillId,
+    this.initialSelectedPersonIds,
+    this.initialAssignmentsByItemIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +62,12 @@ class _ReviewBody extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          TextFormField(
+            initialValue: vm.restaurantName ?? '',
+            decoration: const InputDecoration(labelText: 'Nombre del lugar (opcional)', isDense: true),
+            onChanged: vm.updateRestaurantName,
+          ),
+          const SizedBox(height: 16),
           if (vm.hasReconciliationMismatch)
             Container(
               padding: const EdgeInsets.all(12),
@@ -83,7 +115,19 @@ class _ReviewBody extends StatelessWidget {
                       total: vm.total,
                     );
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => PeopleSelectionScreen(bill: reviewed)),
+                      MaterialPageRoute(
+                        builder: (_) => PeopleSelectionScreen(
+                          bill: reviewed,
+                          editingBillId: editingBillId,
+                          initialSelectedPersonIds: initialSelectedPersonIds,
+                          // Si se agregó/borró/dividió algún ítem, los índices
+                          // ya no coinciden con los de la factura guardada —
+                          // se descarta la precarga en vez de arriesgar
+                          // asignar plata a la persona equivocada sin avisar.
+                          initialAssignmentsByItemIndex:
+                              vm.itemsStructureChanged ? null : initialAssignmentsByItemIndex,
+                        ),
+                      ),
                     );
                   },
             child: Text(vm.items.isEmpty ? 'Agrega al menos un ítem para continuar' : 'Continuar'),

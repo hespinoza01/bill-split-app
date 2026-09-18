@@ -11,8 +11,21 @@ class AssignmentViewModel extends ChangeNotifier {
   final List<PeopleData> people;
   final List<Set<int>> _assignmentsByItemIndex;
 
-  AssignmentViewModel({required this.bill, required this.people})
-      : _assignmentsByItemIndex = List.generate(bill.items.length, (_) => <int>{});
+  // initialAssignments: al editar una factura ya guardada, precarga quién
+  // tenía asignado cada ítem en vez de arrancar todo vacío. Se filtra contra
+  // `people` (los seleccionados en ESTA sesión de edición) porque si alguien
+  // se desmarcó en la pantalla anterior, dejar su id suelto en el mapa haría
+  // que el cálculo lo siguiera contando como asignado (divide el costo del
+  // ítem entre más gente de la que en verdad participa) sin marcarlo nunca
+  // como "sin asignar".
+  AssignmentViewModel({required this.bill, required this.people, Map<int, Set<int>>? initialAssignments})
+      : _assignmentsByItemIndex = List.generate(
+          bill.items.length,
+          (i) => initialAssignments?[i]
+                  ?.where((id) => people.any((p) => p.id == id))
+                  .toSet() ??
+              <int>{},
+        );
 
   Set<int> assigneesFor(int itemIndex) => _assignmentsByItemIndex[itemIndex];
 

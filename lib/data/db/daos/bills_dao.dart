@@ -25,6 +25,14 @@ class BillsDao extends DatabaseAccessor<AppDatabase> with _$BillsDaoMixin {
     return (select(billPeople)..where((bp) => bp.billId.equals(billId))).get();
   }
 
+  // Stream (no Future): así el badge de estado de pago se actualiza solo
+  // cuando isPaid cambia, sin depender de que watchAllBills() reemita (no
+  // observa esta tabla) — y Drift dedupea streams idénticos, evitando
+  // re-queries/parpadeo en cada rebuild de la lista.
+  Stream<List<BillPeopleData>> watchBillPeopleForBill(int billId) {
+    return (select(billPeople)..where((bp) => bp.billId.equals(billId))).watch();
+  }
+
   Future<List<Assignment>> assignmentsForLineItems(List<int> lineItemIds) {
     return (select(assignments)..where((a) => a.lineItemId.isIn(lineItemIds))).get();
   }

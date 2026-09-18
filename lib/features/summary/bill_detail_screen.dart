@@ -7,6 +7,8 @@ import '../assignment/reviewed_bill_data.dart';
 import '../receipt_review/receipt_review_screen.dart';
 import '../../services/share_service.dart';
 import 'full_bill_view.dart';
+import 'payment_status.dart';
+import 'payment_status_badge.dart';
 import 'person_total_card.dart';
 import 'split_calculator.dart';
 
@@ -131,9 +133,18 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
               children: [
                 ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: data.personTotals.length,
+                  itemCount: data.personTotals.length + (data.isPaidByPersonId.isEmpty ? 0 : 1),
                   itemBuilder: (context, index) {
-                    final personTotal = data.personTotals[index];
+                    if (data.isPaidByPersonId.isNotEmpty && index == 0) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: PaymentStatusBadge(status: data.paymentStatus),
+                        ),
+                      );
+                    }
+                    final personTotal = data.personTotals[data.isPaidByPersonId.isEmpty ? index : index - 1];
                     return PersonTotalCard(
                       personTotal: personTotal,
                       onShare: () => shareService.sharePersonTotal(personTotal, data.bill),
@@ -211,6 +222,18 @@ class _BillDetailData {
   final Map<int, Set<int>> assignmentsByItemIndex;
   final Map<int, int> billPersonIdByPersonId;
   final Map<int, bool> isPaidByPersonId;
+
+  // Getter, no campo fijo: así al tocar el chip de una persona (que muta
+  // isPaidByPersonId) el badge se recalcula solo, sin tener que sincronizar
+  // dos estados por separado.
+  PaymentStatus get paymentStatus {
+    final total = isPaidByPersonId.length;
+    final paid = isPaidByPersonId.values.where((v) => v).length;
+    final status = paid == 0
+        ? BillPaymentStatus.pending
+        : (paid == total ? BillPaymentStatus.paid : BillPaymentStatus.partial);
+    return PaymentStatus(paidCount: paid, totalCount: total, status: status);
+  }
 
   _BillDetailData({
     required this.bill,

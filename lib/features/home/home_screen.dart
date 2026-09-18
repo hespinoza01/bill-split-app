@@ -7,6 +7,8 @@ import '../capture/capture_screen.dart';
 import '../people_groups/people_groups_screen.dart';
 import '../settings/settings_screen.dart';
 import '../summary/bill_detail_screen.dart';
+import '../summary/payment_status.dart';
+import '../summary/payment_status_badge.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -63,7 +65,23 @@ class HomeScreen extends StatelessWidget {
               final bill = bills[index];
               return ListTile(
                 title: Text(bill.restaurantName ?? 'Factura sin nombre'),
-                subtitle: Text(DateFormat.yMMMd().format(bill.date)),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(DateFormat.yMMMd().format(bill.date)),
+                    StreamBuilder<List<BillPeopleData>>(
+                      stream: db.billsDao.watchBillPeopleForBill(bill.id),
+                      builder: (context, snapshot) {
+                        final billPeople = snapshot.data;
+                        if (billPeople == null || billPeople.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: PaymentStatusBadge(status: PaymentStatus.fromBillPeople(billPeople)),
+                        );
+                      },
+                    ),
+                  ],
+                ),
                 trailing: Text(currency.format(bill.total)),
                 onTap: () {
                   Navigator.of(context).push(
